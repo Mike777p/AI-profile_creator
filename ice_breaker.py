@@ -4,18 +4,24 @@ from langchain.chains import LLMChain
 from dotenv import load_dotenv
 import os
 from third_parties.edenMarco import eden
-from agents.linkedin_lookup_agents import lookup
+from agents.linkedin_lookup_agent import lookup
+from third_parties.twitter_with_stubs import scrape_user_tweets
 
 # load environment variables from .env file
 load_dotenv()
-
+name = "eden marco"
 if __name__ == "__main__":
     print("Hello Langchain")
     
+    linkedin_profile_url = lookup(name=name)
+    print(linkedin_profile_url)
+    # linkedin_data = scrape_linkedin_data(linkedin_profile_url=linkedin_profile_url)
+    linkedin_data = eden
+    
+    tweets = scrape_user_tweets(name)
+    
     openai_api_key = os.getenv('OPEN_API_KEY')
-    
-    
-    
+     
     broad_template = """
     Given the linkedin information {information}. I want you to create:
     1. a short summary
@@ -31,8 +37,8 @@ if __name__ == "__main__":
     
     chain = LLMChain(llm=llm, prompt=summary_prompt_template)
     
-    linkedin_profile_url = lookup(name="Eden Marco")
-    print(linkedin_profile_url)
-    # linkedin_data = scrape_linkedin_data(linkedin_profile_url=linkedin_profile_url)
+    print(chainrun(information=linkedin_data))
     
-    # print(chain.run(information=eden))
+    
+    
+    print(tweets)
