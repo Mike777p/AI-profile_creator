@@ -1,8 +1,7 @@
 import os
 import logging
-from dotenv import load_dotenv
+
 import tweepy
-load_dotenv()
 
 logger = logging.getLogger("twitter")
 
@@ -36,4 +35,4 @@ def scrape_user_tweets(username, num_tweets=5):
 
 
 if __name__ == "__main__":
-    print(scrape_user_tweets(username="@elonmusk"))
+    print(scrape_user_tweets(username="hwchase17"))

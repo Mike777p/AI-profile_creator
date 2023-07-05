@@ -1,44 +1,54 @@
-from langchain import PromptTemplate
-from langchain.chat_models import ChatOpenAI
-from langchain.chains import LLMChain
-from dotenv import load_dotenv
-import os
-from third_parties.edenMarco import eden
-from agents.linkedin_lookup_agent import lookup
-from third_parties.twitter_with_stubs import scrape_user_tweets
+from typing import Tuple
+from agents.linkedin_lookup_agent import lookup as linkedin_lookup_agent
+from agents.twitter_lookup_agent import lookup as twitter_lookup_agent
+from chains.custom_chains import (
+    get_summary_chain,
+    get_interests_chain,
+    get_ice_breaker_chain,
+)
+from third_parties.linkedin import scrape_linkedin_profile
 
-# load environment variables from .env file
-load_dotenv()
-name = "eden marco"
-if __name__ == "__main__":
-    print("Hello Langchain")
-    
-    linkedin_profile_url = lookup(name=name)
-    print(linkedin_profile_url)
-    # linkedin_data = scrape_linkedin_data(linkedin_profile_url=linkedin_profile_url)
-    linkedin_data = eden
-    
-    tweets = scrape_user_tweets(name)
-    
-    openai_api_key = os.getenv('OPEN_API_KEY')
-     
-    broad_template = """
-    Given the linkedin information {information}. I want you to create:
-    1. a short summary
-    2. Two interesting facts about them
-    3. What is the best thing to say to them if I ever met them
-    """
+from third_parties.twitter import scrape_user_tweets
+from output_parsers import (
+    summary_parser,
+    topics_of_interest_parser,
+    ice_breaker_parser,
+    Summary,
+    IceBreaker,
+    TopicOfInterest,
+)
 
-    summary_prompt_template = PromptTemplate(
-        input_variables=["information"], template=broad_template
+
+def ice_break_with(name: str) -> Tuple[Summary, IceBreaker, TopicOfInterest, str]:
+    linkedin_username = linkedin_lookup_agent(name=name)
+    linkedin_data = scrape_linkedin_profile(linkedin_profile_url=linkedin_username)
+
+    twitter_username = twitter_lookup_agent(name=name)
+    tweets = scrape_user_tweets(username=twitter_username)
+
+    summary_chain = get_summary_chain()
+    summary_and_facts = summary_chain.run(
+        information=linkedin_data, twitter_posts=tweets
     )
-    
-    llm = ChatOpenAI(temperature=1, model="gpt-3.5-turbo", openai_api_key=openai_api_key)
-    
-    chain = LLMChain(llm=llm, prompt=summary_prompt_template)
-    
-    print(chainrun(information=linkedin_data))
-    
-    
-    
-    print(tweets)
+    summary_and_facts = summary_parser.parse(summary_and_facts)
+
+    interests_chain = get_interests_chain()
+    interests = interests_chain.run(information=linkedin_data, twitter_posts=tweets)
+    interests = topics_of_interest_parser.parse(interests)
+
+    ice_breaker_chain = get_ice_breaker_chain()
+    ice_breakers = ice_breaker_chain.run(
+        information=linkedin_data, twitter_posts=tweets
+    )
+    ice_breakers = ice_breaker_parser.parse(ice_breakers)
+
+    return (
+        summary_and_facts,
+        interests,
+        ice_breakers,
+        linkedin_data.get("profile_pic_url"),
+    )
+
+
+if __name__ == "__main__":
+    pass
